@@ -2,8 +2,7 @@ package com.gahrms.backend.common.exception;
 
 import com.gahrms.backend.common.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -17,10 +16,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
-    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ErrorResponse> handleApiException(ApiException ex, HttpServletRequest request) {
@@ -53,6 +51,19 @@ public class GlobalExceptionHandler {
                 .correlationId(correlationId)
                 .build();
 
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(org.springframework.http.converter.HttpMessageNotReadableException ex) {
+        String correlationId = UUID.randomUUID().toString();
+        log.warn("Malformed JSON request [{}]: {}", correlationId, ex.getMessage());
+        ErrorResponse error = ErrorResponse.builder()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .errorCode("MALFORMED_JSON_REQUEST")
+                .message("Malformed JSON or invalid request payload: " + (ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage()))
+                .correlationId(correlationId)
+                .build();
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 

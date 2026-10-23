@@ -1,4 +1,22 @@
 services:
+  
+  app:
+    build: .
+    container_name: ga-hrms-app
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=ga_hrms
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - SERVER_PORT=8082
   postgres:
     image: postgres:16-alpine
     container_name: ga-hrms-postgres
@@ -8,7 +26,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -16,7 +34,17 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: ga-hrms-ngrok
+    restart: unless-stopped
+    depends_on:
+      - app
+    command: http --url=strained-radar-delighted.ngrok-free.dev app:8082
+    environment:
+      - NGROK_AUTHTOKEN=3L2WNyxrH60rlp1m80F4ZdusT6j_34WMNE3yXdHz2smMDFn2N
+    ports:
+      - "4040:4040"
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: ga-hrms-pgadmin

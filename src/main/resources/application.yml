@@ -3,9 +3,12 @@ spring:
     name: ga-hrms-backend
   profiles:
     active: dev
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: false
 
 server:
-  port: 8080
+  port: ${SERVER_PORT:8082}
   servlet:
     context-path: /
 
@@ -18,8 +21,30 @@ app:
   cors:
     allowed-origins:
       - "http://localhost:5173"
+      - "http://localhost:5174"
+      - "http://localhost:5175"
       - "http://localhost:3000"
       - "http://127.0.0.1:5173"
+      - "http://127.0.0.1:5174"
+      - "http://127.0.0.1:5175"
+
+# eTimeTrack MSSQL Biometric Source Configuration (Secondary Read-Only DataSource)
+etimetrack:
+  datasource:
+    enabled: ${ETIMETRACK_ENABLED:false}
+    host: ${ETIMETRACK_DB_HOST:localhost}
+    port: ${ETIMETRACK_DB_PORT:1433}
+    instance-name: ${ETIMETRACK_DB_INSTANCE:}
+    database-name: ${ETIMETRACK_DB_NAME:etimetracklite1}
+    username: ${ETIMETRACK_DB_USER:sa}
+    password: ${ETIMETRACK_DB_PASSWORD:}
+    login-timeout-seconds: ${ETIMETRACK_LOGIN_TIMEOUT:5}
+    trust-server-certificate: ${ETIMETRACK_TRUST_CERT:true}
+  sync:
+    enabled: ${ATTENDANCE_SYNC_ENABLED:false} # Kept strictly disabled until authorized
+    cron: ${ATTENDANCE_SYNC_CRON:0 */5 * * * *}
+    batch-size: ${ATTENDANCE_SYNC_BATCH_SIZE:100}
+    backfill-start-date: ${ATTENDANCE_SYNC_BACKFILL_DATE:}
 
 springdoc:
   api-docs:

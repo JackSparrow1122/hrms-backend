@@ -1,8 +1,15 @@
 package com.gahrms.backend.modules.identity.entity;
 
 import jakarta.persistence.*;
+import lombok.*;
+
 import java.time.Instant;
 
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @Entity
 @Table(name = "refresh_tokens")
 public class RefreshToken {
@@ -21,40 +28,11 @@ public class RefreshToken {
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
+    @Builder.Default
     @Column(nullable = false)
     private boolean revoked = false;
 
+    @Builder.Default
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
-
-    public RefreshToken() {}
-
-    public static Builder builder() { return new Builder(); }
-
-    public static class Builder {
-        private final RefreshToken rt = new RefreshToken();
-        public Builder user(User user) { rt.user = user; return this; }
-        public Builder token(String token) { rt.token = token; return this; }
-        public Builder expiresAt(Instant expiresAt) { rt.expiresAt = expiresAt; return this; }
-        public Builder revoked(boolean revoked) { rt.revoked = revoked; return this; }
-        public RefreshToken build() { return rt; }
-    }
-
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
-
-    public String getToken() { return token; }
-    public void setToken(String token) { this.token = token; }
-
-    public Instant getExpiresAt() { return expiresAt; }
-    public void setExpiresAt(Instant expiresAt) { this.expiresAt = expiresAt; }
-
-    public boolean isRevoked() { return revoked; }
-    public void setRevoked(boolean revoked) { this.revoked = revoked; }
-
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 }

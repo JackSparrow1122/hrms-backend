@@ -6,10 +6,12 @@ public final class AppConstants {
 
     public static final String API_V1_PREFIX = "/api/v1";
 
-    // Roles matching PRD v1.1
+    // Core Multi-Tenant Enterprise Roles
     public static final String ROLE_SUPER_ADMIN = "ROLE_SUPER_ADMIN";
+    public static final String ROLE_TENANT_ADMIN = "ROLE_TENANT_ADMIN";
     public static final String ROLE_HR_ADMIN = "ROLE_HR_ADMIN";
     public static final String ROLE_MANAGER = "ROLE_MANAGER";
+    public static final String ROLE_TEAM_LEAD = "ROLE_TEAM_LEAD";
     public static final String ROLE_PAYROLL_ADMIN = "ROLE_PAYROLL_ADMIN";
     public static final String ROLE_EMPLOYEE = "ROLE_EMPLOYEE";
     public static final String ROLE_AUDITOR_READONLY = "ROLE_AUDITOR_READONLY";

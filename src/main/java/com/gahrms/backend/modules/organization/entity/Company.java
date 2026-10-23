@@ -1,8 +1,15 @@
 package com.gahrms.backend.modules.organization.entity;
 
 import jakarta.persistence.*;
+import lombok.*;
+
 import java.time.Instant;
 
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @Entity
 @Table(name = "companies")
 public class Company {
@@ -23,44 +30,45 @@ public class Company {
     @Column(name = "tax_id", length = 100)
     private String taxId;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private TenantStatus status = TenantStatus.ACTIVE;
+
+    @Builder.Default
+    @Column(name = "subscription_plan", length = 50)
+    private String subscriptionPlan = "ENTERPRISE";
+
+    @Builder.Default
+    @Column(name = "max_employees")
+    private Integer maxEmployees = 500;
+
+    @Builder.Default
+    @Column(name = "max_branches")
+    private Integer maxBranches = 5;
+
+    @Column(name = "contact_email", length = 150)
+    private String contactEmail;
+
+    @Column(name = "contact_phone", length = 50)
+    private String contactPhone;
+
+    @Column(name = "domain", length = 100)
+    private String domain;
+
+    @Builder.Default
     @Column(nullable = false, length = 50)
     private String timezone = "Asia/Kolkata";
 
+    @Builder.Default
     @Column(nullable = false, length = 10)
     private String currency = "INR";
 
+    @Builder.Default
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
+    @Builder.Default
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
-
-    public Company() {}
-
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-
-    public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
-
-    public String getRegistrationNumber() { return registrationNumber; }
-    public void setRegistrationNumber(String registrationNumber) { this.registrationNumber = registrationNumber; }
-
-    public String getTaxId() { return taxId; }
-    public void setTaxId(String taxId) { this.taxId = taxId; }
-
-    public String getTimezone() { return timezone; }
-    public void setTimezone(String timezone) { this.timezone = timezone; }
-
-    public String getCurrency() { return currency; }
-    public void setCurrency(String currency) { this.currency = currency; }
-
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
-
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 }

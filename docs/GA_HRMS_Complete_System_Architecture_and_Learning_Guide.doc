@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GA-HRMS System Architecture & Complete Learning Guide</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap');
+
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #3730a3;
+            --secondary: #06b6d4;
+            --accent: #8b5cf6;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --border: #e2e8f0;
+            --code-bg: #0f172a;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        @media print {
+            body {
+                background: white !important;
+                font-size: 11pt;
+            }
+            .page-break {
+                page-break-before: always;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .card {
+                box-shadow: none !important;
+                border: 1px solid #cbd5e1 !important;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        /* Header Cover */
+        .cover {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
+            color: white;
+            padding: 48px;
+            border-radius: 16px;
+            margin-bottom: 32px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+
+        .cover-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(8px);
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-bottom: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .cover h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 12px;
+        }
+
+        .cover p {
+            font-size: 1.1rem;
+            color: #c7d2fe;
+            margin-bottom: 24px;
+        }
+
+        .cover-meta {
+            display: flex;
+            gap: 20px;
+            font-size: 0.9rem;
+            color: #e0e7ff;
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            padding-top: 16px;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 28px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        h2 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--primary-dark);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 2px solid #e0e7ff;
+            padding-bottom: 8px;
+        }
+
+        h3 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin: 20px 0 10px 0;
+        }
+
+        p, li {
+            color: var(--text-muted);
+            font-size: 0.98rem;
+            margin-bottom: 12px;
+        }
+
+        ul, ol {
+            padding-left: 24px;
+            margin-bottom: 16px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        /* Badges & Callouts */
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+            font-size: 0.95rem;
+        }
+
+        .alert-info {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            color: #1e40af;
+        }
+
+        .alert-success {
+            background: #ecfdf5;
+            border-left: 4px solid #10b981;
+            color: #065f46;
+        }
+
+        .alert-warning {
+            background: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            color: #92400e;
+        }
+
+        /* Code Blocks */
+        pre {
+            background: var(--code-bg);
+            color: #f8fafc;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88rem;
+            line-height: 1.5;
+            margin: 14px 0;
+        }
+
+        code {
+            font-family: 'Fira Code', monospace;
+            background: #f1f5f9;
+            color: #db2777;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.88em;
+        }
+
+        pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 0.92rem;
+        }
+
+        th, td {
+            padding: 10px 14px;
+            text-align: left;
+            border: 1px solid var(--border);
+        }
+
+        th {
+            background-color: #f1f5f9;
+            font-weight: 600;
+            color: #334155;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+
+        /* Diagram Box */
+        .diagram {
+            background: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            color: #334155;
+            white-space: pre;
+            overflow-x: auto;
+            margin: 16px 0;
+            line-height: 1.4;
+        }
+
+        .tag {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+
+        .tag-get { background: #dbeafe; color: #1e40af; }
+        .tag-post { background: #d1fae5; color: #065f46; }
+        .tag-put { background: #fef3c7; color: #92400e; }
+        .tag-patch { background: #ede9fe; color: #5b21b6; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- Header Section -->
+    <div class="cover">
+        <span class="cover-badge">Complete Architecture & Code Manual</span>
+        <h1>GA-HRMS Backend Platform</h1>
+        <p>Production-Grade Enterprise Multi-Tenant HRMS | Architecture, Flow, & Code Reference</p>
+        <div class="cover-meta">
+            <div><strong>Stack:</strong> Java 21 LTS | Spring Boot 3.4.1 | PostgreSQL 16</div>
+            <div><strong>Author:</strong> Dipratna Mahire</div>
+            <div><strong>Version:</strong> Phase 0, 1 & 2 Complete</div>
+        </div>
+    </div>
+
+    <!-- Section 1: The Core Concept -->
+    <div class="card">
+        <h2>1. Architecture & Design Decisions</h2>
+        <p><strong>GA-HRMS</strong> ek production-grade Human Resource Management System hai jo <strong>Modular Monolith</strong> pattern par bana hai:</p>
+        <ul>
+            <li><strong>Modular Monolith Kyu?</strong> Microservices me deployment, network latency, aur distributed transactions ki bohot zyada complexity hoti hai. Isliye monolithic repository me har module (Identity, Organization, Employee, Attendance, Payroll) ko alag package me strictly isolate kiya gaya hai.</li>
+            <li><strong>Multi-Tenant Baseline:</strong> Database me ek hi table multiple companies ko serve karti hai. Har table me <code>company_id</code> se data alag rehta hai.</li>
+            <li><strong>Effective Dating & Immutability:</strong> Company ya policy ke badalne se purana historical attendance aur salary data kabhi corrupt nahi hota.</li>
+        </ul>
+
+        <div class="alert alert-info">
+            <strong>Key Golden Rule:</strong> Controller me sirf HTTP request receive hoti hai aur validation hota hai. Sara business logic <code>Service</code> class me hota hai, aur database queries <code>Repository</code> handle karta hai.
+        </div>
+    </div>
+
+    <!-- Section 2: Complete Folder Structure -->
+    <div class="card page-break">
+        <h2>2. Folder Structure & Responsibilities</h2>
+        <p>Har folder ka ek specific kaam hai:</p>
+
+        <div class="diagram">ga-hrms-backend/
+├── 📁 config/
+│   ├── ApplicationSecurityConfig.java  --> PasswordEncoder, UserDetailsService, AuthenticationManager
+│   ├── SecurityConfig.java             --> SecurityFilterChain (CORS, CSRF, URL Protection)
+│   ├── JwtAuthenticationFilter.java    --> Har incoming request se Bearer token verify karta hai
+│   └── OpenApiConfig.java              --> Swagger UI / OpenAPI 3 settings
+│
+├── 📁 common/                          --> Shared DTOs & Error Handling
+│   ├── dto/ApiResponse.java            --> Standard Response: {success, message, data, timestamp}
+│   ├── dto/ErrorResponse.java          --> Standard Error: {status, errorCode, message, correlationId}
+│   ├── dto/PageResponse.java           --> Pagination Helper (totalElements, totalPages, isLast)
+│   ├── entity/BaseEntity.java          --> id, createdAt, updatedAt, version (Saari tables inherit karti hain)
+│   └── exception/                      --> GlobalExceptionHandler, ConflictException, ResourceNotFoundException
+│
+├── 📁 modules/
+│   ├── 📁 identity/                    --> Authentication & Roles
+│   │   ├── AuthController.java         --> /api/v1/auth/login, /refresh, /logout, /me
+│   │   ├── AuthService.java            --> Login verification, JWT issue karna
+│   │   └── entity/                     --> User, Role, Permission, RefreshToken
+│   │
+│   ├── 📁 organization/                --> Company Hierarchy
+│   │   ├── OrganizationController.java --> /companies, /branches, /departments, /designations
+│   │   ├── OrganizationService.java    --> Hierarchy tree aur unique checks
+│   │   └── entity/                     --> Company, Branch, Department, Designation
+│   │
+│   └── 📁 employee/                    --> Employee Lifecycle (Phase 2)
+│       ├── EmployeeController.java     --> /api/v1/employees (Onboard, Directory, Profile, Status)
+│       ├── EmployeeService.java        --> Auto Employee Code, Auto User Account, Loop check
+│       ├── EmployeeRepository.java     --> Spring Data JPA queries
+│       └── EmployeeSpecification.java  --> Dynamic JPA Search Filters
+│
+└── 📁 src/main/resources/
+    ├── application.yml                 --> Port 8082, JWT secret key (24hr expiry)
+    ├── application-dev.yml             --> PostgreSQL 5434 DB Connection
+    └── db/migration/                   --> Flyway V1 (18 Tables) & V2 (Seed Admin Data)</div>
+    </div>
+
+    <!-- Section 3: Entity Relationship -->
+    <div class="card">
+        <h2>3. Database Tables Relationship (ER Diagram)</h2>
+        <p>Yeh dekhiye ki tables aapas me kaise connected hain:</p>
+
+        <div class="diagram">                 ┌────────────────────────────────┐
+                 │       companies (id: 1)        │
+                 └───────────────┬────────────────┘
+                                 │
+         ┌───────────────────────┼───────────────────────┐
+         ▼                       ▼                       ▼
+  ┌─────────────┐         ┌─────────────┐         ┌─────────────┐
+  │  branches   │         │ departments │         │designations │
+  │ (Mumbai HQ) │         │ (Engineering│         │  (Software  │
+  │             │         │     HR)     │         │  Engineer)  │
+  └──────┬──────┘         └──────┬──────┘         └──────┬──────┘
+         │                       │                       │
+         └───────────────────────┼───────────────────────┘
+                                 │
+                                 ▼
+                 ┌────────────────────────────────┐
+                 │           employees            │ ◄──┐ (manager_id links
+                 │  id: 1, code: EMP-0001         │ ───┘  to another employee)
+                 │  email: rahul.sharma@...       │
+                 └───────────────┬────────────────┘
+                                 │ (employee_id)
+                                 ▼
+                 ┌────────────────────────────────┐
+                 │             users              │ (Login credentials)
+                 │  email: rahul.sharma@...       │
+                 │  password_hash: $2a$10$...     │
+                 └───────────────┬────────────────┘
+                                 │ (user_roles)
+                                 ▼
+                 ┌────────────────────────────────┐
+                 │             roles              │
+                 │  ROLE_EMPLOYEE, ROLE_HR_ADMIN  │
+                 └────────────────────────────────┘</div>
+    </div>
+
+    <!-- Section 4: Object Creation & Setter Approach Deep Dive -->
+    <div class="card page-break">
+        <h2>4. Deep Dive: Object Creation & Setters Approach</h2>
+        <p>Aapne pucha tha ki <strong>"Service me Object kaha ban raha hai aur value kaha set ho rahi hai?"</strong></p>
+        
+        <p>Code me standard, traditional <strong>new keyword + Setter methods</strong> use hue hain taaki code crystal-clear rahe:</p>
+
+        <pre><code>// 1. Database se Foreign Key Entities fetch ki
+Company company = companyRepository.findById(request.getCompanyId()).orElseThrow(...);
+Department department = departmentRepository.findById(request.getDepartmentId()).orElseThrow(...);
+
+// 2. new keyword se Object BAN RAHA HAI aur SETTERS se VALUES SET HO RAHI HAIN:
+Employee employee = new Employee();               // <-- YAHA JAVA MEMORY ME OBJECT CREATE HUA!
+employee.setEmployeeCode(employeeCode);           // <-- VALUE SET HO RAHI HAI
+employee.setFirstName(request.getFirstName());    // <-- VALUE SET HO RAHI HAI
+employee.setLastName(request.getLastName());      // <-- VALUE SET HO RAHI HAI
+employee.setEmail(request.getEmail());            // <-- VALUE SET HO RAHI HAI
+employee.setJoiningDate(request.getJoiningDate());// <-- VALUE SET HO RAHI HAI
+employee.setCompany(company);                     // <-- Company Entity SET hui
+employee.setDepartment(department);               // <-- Department Entity SET hui
+employee.setDesignation(designation);             // <-- Designation Entity SET hui
+employee.setManager(manager);                     // <-- Reporting Manager SET hua
+
+// 3. Database me Permanent Save:
+Employee savedEmployee = employeeRepository.save(employee); // <-- SQL INSERT execute hua
+
+// 4. Response DTO Object Creation & Setting (mapToResponse):
+EmployeeResponse response = new EmployeeResponse(); // <-- DTO OBJECT CREATE HUA!
+response.setId(savedEmployee.getId());              // <-- ID SET
+response.setEmployeeCode(savedEmployee.getEmployeeCode()); // <-- Code SET
+response.setFullName(savedEmployee.getFullName());  // <-- Name SET
+response.setDepartmentName(savedEmployee.getDepartment().getName()); // <-- Dept Name SET
+return response;                                    // <-- Controller ko return</code></pre>
+
+        <div class="alert alert-success">
+            <strong>Fayda:</strong> Is tarike se bilkul clearly dikhta hai ki kab <code>new Employee()</code> ya <code>new EmployeeResponse()</code> se blank object bana, aur kab ek-ek line me <code>.setXYZ(...)</code> se values assign hui!
+        </div>
+    </div>
+
+    <!-- Section 5: Under the Hood Request Flow -->
+    <div class="card">
+        <h2>5. Request Lifecycle: Postman se Database Tak</h2>
+        <p>Jab aap Postman se <code>POST /api/v1/employees</code> request bhejte hain, to step-by-step kya hota hai:</p>
+
+        <ol>
+            <li><strong>Client:</strong> Postman Header me JWT token bhejta hai: <code>Authorization: Bearer &lt;token&gt;</code></li>
+            <li><strong>JwtAuthenticationFilter:</strong> Filter token ko intercept karta hai, JJWT library se secret key verify karta hai, aur authenticated user ko Spring Security Context me store karta hai.</li>
+            <li><strong>Authorization Check:</strong> <code>@PreAuthorize("hasAnyRole('SUPER_ADMIN', 'HR_ADMIN')")</code> check karta hai ki kya user ke paas Admin authority hai. Agar nahi, to <code>403 Forbidden</code> return ho jata hai.</li>
+            <li><strong>Controller Validation:</strong> <code>@Valid @RequestBody CreateEmployeeRequest request</code> se check hota hai ki first name, email, joining date empty to nahi hai.</li>
+            <li><strong>Service Business Logic:</strong> <code>EmployeeService</code> email duplication check karta hai, unique Employee Code generate karta hai, aur entity save karta hai.</li>
+            <li><strong>Database Save:</strong> Spring Data JPA PostgreSQL me <code>INSERT INTO employees</code> aur <code>INSERT INTO users</code> run karta hai.</li>
+            <li><strong>JSON Output:</strong> Service response DTO banata hai, aur Jackson usko JSON me convert karke HTTP 201 Created return karta hai.</li>
+        </ol>
+    </div>
+
+    <!-- Section 6: API Reference Table -->
+    <div class="card page-break">
+        <h2>6. Complete Working APIs Catalogue</h2>
+        <p>Saare APIs active port <strong>8082</strong> par live hain:</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Module</th>
+                    <th>Method</th>
+                    <th>Endpoint</th>
+                    <th>Access Role</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Auth</strong></td>
+                    <td><span class="tag tag-post">POST</span></td>
+                    <td><code>/api/v1/auth/login</code></td>
+                    <td>Public</td>
+                    <td>Email + Password bhejo, JWT Tokens pao</td>
+                </tr>
+                <tr>
+                    <td><strong>Auth</strong></td>
+                    <td><span class="tag tag-post">POST</span></td>
+                    <td><code>/api/v1/auth/refresh</code></td>
+                    <td>Public</td>
+                    <td>Refresh token se naya access token generate karo</td>
+                </tr>
+                <tr>
+                    <td><strong>Auth</strong></td>
+                    <td><span class="tag tag-get">GET</span></td>
+                    <td><code>/api/v1/auth/me</code></td>
+                    <td>Authenticated</td>
+                    <td>Logged-in user ka profile summary dekho</td>
+                </tr>
+                <tr>
+                    <td><strong>Organization</strong></td>
+                    <td><span class="tag tag-get">GET</span></td>
+                    <td><code>/api/v1/organization/companies</code></td>
+                    <td>Authenticated</td>
+                    <td>Registered companies ki list</td>
+                </tr>
+                <tr>
+                    <td><strong>Organization</strong></td>
+                    <td><span class="tag tag-post">POST</span></td>
+                    <td><code>/api/v1/organization/branches</code></td>
+                    <td>Admin / HR</td>
+                    <td>Naya office/branch location create karo</td>
+                </tr>
+                <tr>
+                    <td><strong>Organization</strong></td>
+                    <td><span class="tag tag-post">POST</span></td>
+                    <td><code>/api/v1/organization/departments</code></td>
+                    <td>Admin / HR</td>
+                    <td>IT, HR, Finance departments add karo</td>
+                </tr>
+                <tr>
+                    <td><strong>Organization</strong></td>
+                    <td><span class="tag tag-post">POST</span></td>
+                    <td><code>/api/v1/organization/designations</code></td>
+                    <td>Admin / HR</td>
+                    <td>Designations (Software Engineer, Manager) add karo</td>
+                </tr>
+                <tr>
+                    <td><strong>Employee</strong></td>
+                    <td><span class="tag tag-post">POST</span></td>
+                    <td><code>/api/v1/employees</code></td>
+                    <td>Admin / HR</td>
+                    <td>Employee onboarding + Auto login user account</td>
+                </tr>
+                <tr>
+                    <td><strong>Employee</strong></td>
+                    <td><span class="tag tag-get">GET</span></td>
+                    <td><code>/api/v1/employees</code></td>
+                    <td>Admin / HR / Manager</td>
+                    <td>Search, filter aur paginated employee directory</td>
+                </tr>
+                <tr>
+                    <td><strong>Employee</strong></td>
+                    <td><span class="tag tag-get">GET</span></td>
+                    <td><code>/api/v1/employees/{id}</code></td>
+                    <td>Authenticated</td>
+                    <td>Single employee ka complete profile</td>
+                </tr>
+                <tr>
+                    <td><strong>Employee</strong></td>
+                    <td><span class="tag tag-put">PUT</span></td>
+                    <td><code>/api/v1/employees/{id}</code></td>
+                    <td>Admin / HR</td>
+                    <td>Employee details modify karo</td>
+                </tr>
+                <tr>
+                    <td><strong>Employee</strong></td>
+                    <td><span class="tag tag-patch">PATCH</span></td>
+                    <td><code>/api/v1/employees/{id}/status</code></td>
+                    <td>Admin / HR</td>
+                    <td>Status change (Active/Separated) + User sync</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Section 7: Live Test Evidence -->
+    <div class="card">
+        <h2>7. Live Verification Test Results</h2>
+        <p>Humne live database me ye test successfully run kiya:</p>
+
+        <div class="alert alert-success">
+            <strong>✅ Test 1: Admin Authentication</strong><br>
+            • User: <code>admin@gahrms.com</code> | Password: <code>Admin@123456</code><br>
+            • Status: <strong>HTTP 200 OK</strong> | Token Issued with <code>ROLE_SUPER_ADMIN</code>.
+        </div>
+
+        <div class="alert alert-success">
+            <strong>✅ Test 2: Employee Onboarding</strong><br>
+            • Created: Rahul Sharma (<code>rahul.sharma@gahrms.com</code>)<br>
+            • Assigned Code: <code>EMP-0001</code> | Department: Software Engineering<br>
+            • Auto User Created: <code>userId: 2</code> linked to Employee ID 1.
+        </div>
+
+        <div class="alert alert-success">
+            <strong>✅ Test 3: New Employee Login</strong><br>
+            • User: <code>rahul.sharma@gahrms.com</code> | Password: <code>Welcome@123</code><br>
+            • Status: <strong>HTTP 200 OK</strong> | Successfully authenticated with <code>ROLE_EMPLOYEE</code>!
+        </div>
+    </div>
+
+    <!-- Section 8: What Next? -->
+    <div class="card">
+        <h2>8. Roadmap: Agla Module Kya Hai?</h2>
+        <p>Ab hamari organization aur employee master tables ready hain. Ab hum aage ke modules bana sakte hain:</p>
+        <ol>
+            <li><strong>Phase 3 (Next): Time & Attendance</strong> ➔ Daily Punch-in/Punch-out, Shift assignment, Grace periods, aur Regularization request workflow.</li>
+            <li><strong>Phase 4: Leave Management</strong> ➔ Leave Types (Casual, Sick, Earned), Balance Ledger, aur Manager Approval Workflow.</li>
+            <li><strong>Phase 5: Payroll Engine</strong> ➔ Salary components, monthly pay calculation, aur locked payslip generation.</li>
+        </ol>
+    </div>
+
+</div>
+
+</body>
+</html>

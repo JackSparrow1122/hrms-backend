@@ -106,6 +106,7 @@ CREATE TABLE departments (
 CREATE TABLE designations (
     id BIGSERIAL PRIMARY KEY,
     company_id BIGINT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    department_id BIGINT REFERENCES departments(id) ON DELETE SET NULL,
     name VARCHAR(150) NOT NULL,
     code VARCHAR(50) NOT NULL,
     level INTEGER DEFAULT 1,

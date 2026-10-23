@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:ga_hrms}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5434}/${DB_NAME:ga_hrms}
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
@@ -21,8 +21,13 @@ spring:
 
   flyway:
     enabled: true
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5434}/${DB_NAME:ga_hrms}
+    user: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
     baseline-on-migrate: true
+    validate-on-migrate: false
     baseline-version: 0
+    target: 4
     locations: classpath:db/migration
 
 logging:

@@ -1,5 +1,6 @@
 package com.gahrms.backend.modules.leave.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -13,7 +14,10 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ApplyLeaveRequest {
+
+    private Long employeeId;
 
     @NotBlank(message = "Leave type code is required (e.g. EL, SL, CL, LWP)")
     private String leaveTypeCode;

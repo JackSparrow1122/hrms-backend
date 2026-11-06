@@ -262,8 +262,8 @@ class AttendanceSyncServiceTest {
                 .biometricEmpCode("GA02")
                 .employee(mockEmployee1)
                 .build();
-        when(mappingRepository.findBySourceSystemAndBiometricEmpCode("ESSL_ETIMETRACK", "GA02"))
-                .thenReturn(Optional.of(explicitMapping));
+        when(mappingRepository.findBySourceSystem("ESSL_ETIMETRACK"))
+                .thenReturn(List.of(explicitMapping));
 
         SyncSummaryDto summary = syncService.remapUnmatchedPunches();
 
@@ -271,10 +271,11 @@ class AttendanceSyncServiceTest {
         assertThat(summary.getInsertedCount()).isEqualTo(1); // 1 remapped
         assertThat(summary.getUnmappedEmployeesCount()).isEqualTo(0); // 0 remaining
 
-        ArgumentCaptor<AttendancePunch> captor = ArgumentCaptor.forClass(AttendancePunch.class);
-        verify(punchRepository).save(captor.capture());
-        assertThat(captor.getValue().getMappingStatus()).isEqualTo("MAPPED");
-        assertThat(captor.getValue().getEmployee()).isEqualTo(mockEmployee1);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<AttendancePunch>> captor = ArgumentCaptor.forClass(List.class);
+        verify(punchRepository).saveAll(captor.capture());
+        assertThat(captor.getValue().get(0).getMappingStatus()).isEqualTo("MAPPED");
+        assertThat(captor.getValue().get(0).getEmployee()).isEqualTo(mockEmployee1);
     }
 
     @Test

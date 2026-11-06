@@ -39,6 +39,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import com.gahrms.backend.common.util.SecurityUtils;
@@ -675,9 +676,12 @@ public class AttendanceSyncService {
                 .collect(Collectors.groupingBy(AttendancePunch::getEmployeeCode));
 
         List<LeaveRequest> approvedLeavesOnDate = leaveRequestRepository.findAllApprovedLeavesInRange(date, date);
-        Map<Long, LeaveRequest> empApprovedLeaves = approvedLeavesOnDate.stream()
-                .filter(lr -> lr.getEmployee() != null)
-                .collect(Collectors.toMap(lr -> lr.getEmployee().getId(), lr -> lr, (a, b) -> a));
+        Map<Long, LeaveRequest> empApprovedLeaves = new HashMap<>();
+        for (LeaveRequest lr : approvedLeavesOnDate) {
+            if (lr.getEmployee() != null) {
+                empApprovedLeaves.putIfAbsent(lr.getEmployee().getId(), lr);
+            }
+        }
 
         DayOfWeek dow = date.getDayOfWeek();
         boolean isSunday = (dow == DayOfWeek.SUNDAY);
@@ -691,7 +695,7 @@ public class AttendanceSyncService {
 
         LocalTime standardStart = LocalTime.of(10, 0, 0);
         LocalTime lateThreshold = LocalTime.of(10, 5, 59);
-        LocalTime halfDayThreshold = LocalTime.of(11, 0, 59);
+        LocalTime halfDayThreshold = LocalTime.of(11, 0, 0);
 
         LocalTime expectedOutTime;
         String expectedOutStr;
@@ -734,34 +738,97 @@ public class AttendanceSyncService {
                 ZonedDateTime firstInZdt = firstIn.atZone(ist);
                 LocalTime firstInTime = firstInZdt.toLocalTime();
 
-                int lateMins = 0;
-                String status;
+                LocalDate today = LocalDate.now(ist);
+                boolean isPastDate = date.isBefore(today);
+                boolean isToday = date.equals(today);
+                LocalTime nowTime = LocalTime.now(ist);
 
+                LocalTime secondHalfBoundary = LocalTime.of(14, 0, 0); // 02:00 PM session boundary
+
+                List<LocalTime> allPunchTimes = processed.getPunches().stream()
+                        .map(p -> p.getPunchTime().atZone(ist).toLocalTime())
+                        .sorted()
+                        .collect(Collectors.toList());
+
+                // 1. FIRST HALF CHECK (Morning Session: arrival up to 02:00 PM)
+                boolean hasFirstHalfPunch = allPunchTimes.stream().anyMatch(t -> t.isBefore(secondHalfBoundary));
+                boolean firstHalfPresent = false;
+                boolean isLate = false;
+                int lateMins = 0;
+
+                if (hasFirstHalfPunch) {
+                    if (!firstInTime.isAfter(lateThreshold)) {
+                        firstHalfPresent = true;
+                        isLate = false;
+                        lateMins = 0;
+                    } else if (!firstInTime.isAfter(halfDayThreshold)) {
+                        firstHalfPresent = true;
+                        isLate = true;
+                        lateMins = (int) java.time.Duration.between(standardStart, firstInTime).toMinutes();
+                    } else {
+                        // Arrived after 11:00 AM -> missed first half
+                        firstHalfPresent = false;
+                    }
+                }
+
+                // 2. SECOND HALF CHECK (Afternoon / Evening Session: punches >= 14:00)
+                boolean hasSecondHalfPunch = allPunchTimes.stream().anyMatch(t -> !t.isBefore(secondHalfBoundary));
+                boolean secondHalfPresent = false;
+
+                if (hasSecondHalfPunch) {
+                    secondHalfPresent = true;
+                } else {
+                    // No punch at or after 14:00
+                    if (isToday) {
+                        // During active shift hours, employee is in office on duty
+                        if (expectedOutTime != null && nowTime.isBefore(expectedOutTime)) {
+                            secondHalfPresent = true;
+                        } else {
+                            // Shift has ended tonight and employee never punched in second half
+                            secondHalfPresent = false;
+                        }
+                    } else {
+                        // Past day completed without second half punch
+                        secondHalfPresent = false;
+                    }
+                }
+
+                // 3. COMBINE SESSIONS TO DETERMINE STATUS
+                String status;
                 if (isWeekOffDay) {
                     status = "WEEK_OFF";
                     weekOffCount++;
-                } else {
-                    if (firstInTime.isAfter(halfDayThreshold)) {
-                        status = "HALF_DAY";
-                        lateMins = (int) java.time.Duration.between(standardStart, firstInTime).toMinutes();
-                        halfDayCount++;
-                    } else if (firstInTime.isAfter(lateThreshold)) {
+                } else if (empApprovedLeaves.containsKey(emp.getId())) {
+                    LeaveRequest lr = empApprovedLeaves.get(emp.getId());
+                    status = lr.isHalfDay() ? "HALF_DAY_LEAVE" : "LEAVE";
+                    onLeaveCount++;
+                } else if (firstHalfPresent && secondHalfPresent) {
+                    if (isLate) {
                         status = "LATE";
-                        lateMins = (int) java.time.Duration.between(standardStart, firstInTime).toMinutes();
                         lateCount++;
                     } else {
                         status = "PRESENT";
-                        lateMins = 0;
                         presentCount++;
                     }
+                } else if (firstHalfPresent && !secondHalfPresent) {
+                    status = "HALF_DAY";
+                    halfDayCount++;
+                } else if (!firstHalfPresent && secondHalfPresent) {
+                    status = "HALF_DAY";
+                    halfDayCount++;
+                } else {
+                    status = "ABSENT";
+                    absentCount++;
                 }
 
                 Integer earlyDepartureMins = null;
                 if (!isWeekOffDay && expectedOutTime != null && lastOut != null) {
                     ZonedDateTime lastOutZdt = lastOut.atZone(ist);
                     LocalTime lastOutTime = lastOutZdt.toLocalTime();
-                    if (lastOutTime.isBefore(expectedOutTime)) {
-                        earlyDepartureMins = (int) java.time.Duration.between(lastOutTime, expectedOutTime).toMinutes();
+                    if (isPastDate || (isToday && nowTime.isAfter(expectedOutTime))) {
+                        if (lastOutTime.isBefore(expectedOutTime)) {
+                            earlyDepartureMins = (int) java.time.Duration.between(lastOutTime, expectedOutTime).toMinutes();
+                        }
                     }
                 }
 
@@ -1043,12 +1110,12 @@ public class AttendanceSyncService {
         Instant monthStart = firstDayOfMonth.atStartOfDay(ist).toInstant();
         Instant monthEnd = lastDayOfMonth.plusDays(1).atStartOfDay(ist).toInstant();
 
-        List<LeaveRequest> approvedLeaves = leaveRequestRepository.findApprovedLeavesInRange(employee.getId(), firstDayOfMonth, lastDayOfMonth);
+        List<LeaveRequest> approvedLeaves = leaveRequestRepository.findActiveLeavesInRange(employee.getId(), firstDayOfMonth, lastDayOfMonth);
         Map<LocalDate, LeaveRequest> leavesByDate = new HashMap<>();
         for (LeaveRequest lr : approvedLeaves) {
             LocalDate cur = lr.getStartDate();
             while (!cur.isAfter(lr.getEndDate())) {
-                leavesByDate.put(cur, lr);
+                leavesByDate.putIfAbsent(cur, lr);
                 cur = cur.plusDays(1);
             }
         }
@@ -1063,7 +1130,9 @@ public class AttendanceSyncService {
 
         LocalTime standardStart = LocalTime.of(10, 0, 0);
         LocalTime lateThreshold = LocalTime.of(10, 5, 59);
-        LocalTime halfDayThreshold = LocalTime.of(11, 0, 59);
+        LocalTime halfDayThreshold = LocalTime.of(11, 0, 0);
+        LocalTime firstHalfEnd = LocalTime.of(13, 30, 0);
+        LocalTime lunchEnd = LocalTime.of(14, 15, 0);
 
         List<MonthlyDayAttendanceItemDto> days = new ArrayList<>();
         int presentCount = 0;
@@ -1154,16 +1223,38 @@ public class AttendanceSyncService {
                         .build();
             }
 
-            LeaveRequest approvedLeave = leavesByDate.get(date);
-            if (approvedLeave != null) {
-                String leaveCode = approvedLeave.getLeaveType().getCode().toUpperCase();
-                if (approvedLeave.isHalfDay()) {
-                    boolean isFirstHalf = "FIRST_HALF".equalsIgnoreCase(approvedLeave.getHalfDaySession());
-                    if (isFirstHalf) {
+            LeaveRequest activeLeave = leavesByDate.get(date);
+            boolean isApproved = (activeLeave != null && "APPROVED".equalsIgnoreCase(activeLeave.getStatus()));
+            // Jab tak manager / TL / HR Admin approve na kare, EL/CL/SL nahi dikhna chahiye, waha LWP hi dikhega
+            String leaveCode = isApproved
+                    ? (activeLeave.getLeaveType() != null ? activeLeave.getLeaveType().getCode().toUpperCase() : "LV")
+                    : (activeLeave != null ? "LWP" : null);
+
+            if (activeLeave != null) {
+                if (activeLeave.isHalfDay()) {
+                    boolean isFirstHalfLeave = "FIRST_HALF".equalsIgnoreCase(activeLeave.getHalfDaySession());
+                    if (isFirstHalfLeave) {
                         firstHalf = leaveCode;
-                        secondHalf = hasPunches ? "P" : "A";
+                        if (hasPunches) {
+                            secondHalf = "P";
+                            presentCount++;
+                        } else {
+                            secondHalf = "LWP";
+                        }
                     } else {
-                        firstHalf = hasPunches ? "P" : "A";
+                        if (hasPunches) {
+                            firstHalf = "P";
+                            presentCount++;
+                            LocalTime firstInTime = firstIn.atZone(ist).toLocalTime();
+                            if (firstInTime.isAfter(lateThreshold) && !firstInTime.isAfter(halfDayThreshold)) {
+                                isLate = true;
+                                lateMins = (int) java.time.Duration.between(standardStart, firstInTime).toMinutes();
+                                lateCount++;
+                                lateOccurrence = lateCount;
+                            }
+                        } else {
+                            firstHalf = "LWP";
+                        }
                         secondHalf = leaveCode;
                     }
                     displayCode = firstHalf + " | " + secondHalf;
@@ -1172,6 +1263,9 @@ public class AttendanceSyncService {
                     firstHalf = leaveCode;
                     secondHalf = leaveCode;
                     displayCode = leaveCode + " | " + leaveCode;
+                    if (!isApproved) {
+                        absentCount++;
+                    }
                 }
             } else if (isHoliday) {
                 weekOffCount++;
@@ -1197,54 +1291,126 @@ public class AttendanceSyncService {
                     displayCode = "O | O";
                 }
             } else if (!hasPunches) {
-                absentCount++;
-                firstHalf = "A";
-                secondHalf = "A";
-                displayCode = "A | A";
+                if (isFuture) {
+                    firstHalf = null;
+                    secondHalf = null;
+                    displayCode = "--";
+                } else {
+                    absentCount++;
+                    firstHalf = "A";
+                    secondHalf = "A";
+                    displayCode = "A | A";
+                }
             } else {
                 LocalTime firstInTime = firstIn.atZone(ist).toLocalTime();
-                LocalTime lastOutTime = (lastOut != null) ? lastOut.atZone(ist).toLocalTime() : null;
+                LocalTime secondHalfBoundary = LocalTime.of(14, 0, 0);
 
-                if (firstInTime.isAfter(lateThreshold)) {
-                    isLate = true;
-                    lateMins = (int) java.time.Duration.between(standardStart, firstInTime).toMinutes();
-                    lateCount++;
-                    lateOccurrence = lateCount;
+                List<LocalTime> allDayPunchTimes = (processed != null && processed.getPunches() != null)
+                        ? processed.getPunches().stream()
+                                .map(p -> p.getPunchTime().atZone(ist).toLocalTime())
+                                .sorted()
+                                .collect(Collectors.toList())
+                        : Collections.emptyList();
+
+                // 1. First Half Check
+                boolean hasFirstHalfPunch = allDayPunchTimes.stream().anyMatch(t -> t.isBefore(secondHalfBoundary));
+                boolean firstHalfPresent = false;
+
+                if (hasFirstHalfPunch) {
+                    if (!firstInTime.isAfter(lateThreshold)) {
+                        firstHalfPresent = true;
+                        isLate = false;
+                        lateMins = 0;
+                    } else if (!firstInTime.isAfter(halfDayThreshold)) {
+                        firstHalfPresent = true;
+                        isLate = true;
+                        lateMins = (int) java.time.Duration.between(standardStart, firstInTime).toMinutes();
+                    } else {
+                        // Arrived after 11:00 AM
+                        firstHalfPresent = false;
+                    }
                 }
 
-                if (isLate && lateCount >= 3 && (lateCount % 2 == 1)) {
-                    firstHalf = "LWP";
-                    secondHalf = "LWP";
-                    displayCode = "LWP | LWP";
-                    latePenalty = true;
-                    isLwpPenalty = true;
-                    lateLwpCount++;
-                    presentCount++;
-                } else if (isLate && lateCount >= 4 && (lateCount % 2 == 0)) {
-                    firstHalf = "AB";
-                    secondHalf = "PR";
-                    displayCode = "AB | PR";
-                    latePenalty = true;
-                    isLwpPenalty = false;
-                    halfDayCount++;
-                } else if (firstInTime.isAfter(halfDayThreshold) && !isLate) {
-                    firstHalf = "AB";
-                    secondHalf = "PR";
-                    displayCode = "AB | PR";
-                    isLwpPenalty = false;
-                    halfDayCount++;
-                } else if (date.isBefore(today) && lastOutTime != null && processed.getWorkedMinutes() < 240 && lastOutTime.isBefore(LocalTime.of(14, 0))) {
-                    firstHalf = "PR";
-                    secondHalf = "AB";
-                    displayCode = "PR | AB";
-                    isLwpPenalty = false;
-                    halfDayCount++;
+                // 2. Second Half Check
+                boolean hasSecondHalfPunch = allDayPunchTimes.stream().anyMatch(t -> !t.isBefore(secondHalfBoundary));
+                boolean secondHalfPresent = false;
+
+                if (hasSecondHalfPunch) {
+                    secondHalfPresent = true;
                 } else {
+                    if (isToday) {
+                        LocalTime nowTime = LocalTime.now(ist);
+                        LocalTime todayExpectedOut = (dow == DayOfWeek.MONDAY || dow == DayOfWeek.FRIDAY) ? LocalTime.of(19, 30)
+                                : (dow == DayOfWeek.SATURDAY ? LocalTime.of(18, 0) : LocalTime.of(19, 0));
+                        if (nowTime.isBefore(todayExpectedOut)) {
+                            secondHalfPresent = true; // ongoing workday
+                        } else {
+                            secondHalfPresent = false;
+                        }
+                    } else {
+                        secondHalfPresent = false; // past day without second half punch
+                    }
+                }
+
+                if (firstHalfPresent && secondHalfPresent) {
+                    if (isLate) {
+                        lateCount++;
+                        lateOccurrence = lateCount;
+
+                        if (lateCount >= 3 && (lateCount % 2 == 1)) {
+                            // 3rd, 5th, etc. late mark -> Full Day LWP penalty
+                            firstHalf = "LWP";
+                            secondHalf = "LWP";
+                            displayCode = "LWP | LWP";
+                            latePenalty = true;
+                            isLwpPenalty = true;
+                            lateLwpCount++;
+                            presentCount++;
+                        } else if (lateCount >= 4 && (lateCount % 2 == 0)) {
+                            // 4th, 6th, etc. late mark -> Half Day LWP penalty
+                            firstHalf = "LWP";
+                            secondHalf = "P";
+                            displayCode = "LWP | P";
+                            latePenalty = true;
+                            isLwpPenalty = false;
+                            halfDayCount++;
+                        } else {
+                            // 1st or 2nd late mark -> Allowed (grace period)
+                            firstHalf = "P";
+                            secondHalf = "P";
+                            displayCode = "P | P";
+                            isLwpPenalty = false;
+                            presentCount++;
+                        }
+                    } else {
+                        // On time arrival (<= 10:05:59) and full day worked
+                        firstHalf = "P";
+                        secondHalf = "P";
+                        displayCode = "P | P";
+                        isLwpPenalty = false;
+                        presentCount++;
+                    }
+                } else if (firstHalfPresent && !secondHalfPresent) {
+                    // Left after first half -> Half Day (P | LWP)
                     firstHalf = "P";
-                    secondHalf = "P";
-                    displayCode = "P | P";
+                    secondHalf = "LWP";
+                    displayCode = "P | LWP";
+                    halfDayCount++;
+                    latePenalty = false;
                     isLwpPenalty = false;
-                    presentCount++;
+                } else if (!firstHalfPresent && secondHalfPresent) {
+                    // Arrived only for second half -> Half Day (LWP | P)
+                    firstHalf = "LWP";
+                    secondHalf = "P";
+                    displayCode = "LWP | P";
+                    halfDayCount++;
+                    latePenalty = false;
+                    isLwpPenalty = false;
+                } else {
+                    firstHalf = "A";
+                    secondHalf = "A";
+                    displayCode = "A | A";
+                    absentCount++;
                 }
             }
 

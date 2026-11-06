@@ -131,8 +131,13 @@ public class LeaveService {
 
 @Transactional
 public LeaveRequestResponseDto applyLeave(ApplyLeaveRequest request) {
-    // SELF-SERVICE ONLY: always use the logged-in employee
-    Employee employee = getCurrentEmployee();
+    Employee employee = null;
+    if (isHrOrAdmin() && request.getEmployeeId() != null) {
+        employee = employeeRepository.findById(request.getEmployeeId()).orElse(null);
+    }
+    if (employee == null) {
+        employee = getCurrentEmployee();
+    }
     if (employee == null) {
         throw new BadRequestException(
             "Aapka employee record nahi mila. Leave apply karne ke liye employee profile zaroori hai. HR se contact karein."

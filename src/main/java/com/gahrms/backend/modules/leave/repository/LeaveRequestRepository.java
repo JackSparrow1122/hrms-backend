@@ -26,8 +26,21 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
     @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employee.id = :employeeId AND lr.status = 'APPROVED' AND lr.startDate <= :endDate AND lr.endDate >= :startDate")
     List<LeaveRequest> findApprovedLeavesInRange(@Param("employeeId") Long employeeId, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
+    @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employee.id = :employeeId " +
+           "AND UPPER(lr.status) IN ('APPROVED', 'PENDING') " +
+           "AND lr.startDate <= :endDate AND lr.endDate >= :startDate " +
+           "ORDER BY CASE WHEN UPPER(lr.status) = 'APPROVED' THEN 0 ELSE 1 END, lr.createdAt DESC")
+    List<LeaveRequest> findActiveLeavesInRange(@Param("employeeId") Long employeeId,
+                                              @Param("startDate") LocalDate startDate,
+                                              @Param("endDate") LocalDate endDate);
+
     @Query("SELECT lr FROM LeaveRequest lr WHERE UPPER(lr.status) = 'APPROVED' AND lr.startDate <= :endDate AND lr.endDate >= :startDate")
     List<LeaveRequest> findAllApprovedLeavesInRange(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    @Query("SELECT lr FROM LeaveRequest lr WHERE UPPER(lr.status) IN ('APPROVED', 'PENDING') " +
+           "AND lr.startDate <= :endDate AND lr.endDate >= :startDate " +
+           "ORDER BY CASE WHEN UPPER(lr.status) = 'APPROVED' THEN 0 ELSE 1 END, lr.createdAt DESC")
+    List<LeaveRequest> findAllActiveLeavesInRange(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
     @Query("SELECT lr FROM LeaveRequest lr WHERE (lr.approver.id = :approverId OR lr.employee.manager.id = :approverId) ORDER BY lr.createdAt DESC")
     List<LeaveRequest> findByApproverOrManager(@Param("approverId") Long approverId);
